@@ -1,3 +1,6 @@
+//To run this call 
+//node server.js
+//this runs the server on port 3000
 var express = require('express');
 
 var app = express.createServer();
