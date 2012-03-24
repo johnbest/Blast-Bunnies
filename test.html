@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+    
+    <!--
+    some code from
+    http://atomicrobotdesign.com/blog/htmlcss/move-objects-around-the-canvas-using-the-keyboard-and-jquery/
+    
+    -->
+    
+<html>
+    <head>
+      <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+    
+        <script src='bm.js'></script>
+    <script>
+    
+    var rightKey = false;
+    var leftKey = false;
+    var upKey = false;
+    var downKey = false;
+    
+    currentX=10; currentY=10;
+    
+    var context=null; var canvas=null;
+
+    var currentGame=new bmGame(['john','bob']);
+    
+    var playerIndex=0;
+        
+    $(document).ready(function() {
+    
+    
+        //$('#myCanvas').hide();
+        canvas = $('myCanvas');
+         context = $("#myCanvas")[0].getContext('2d');
+        //context.fillStyle = "rgba(0, 0, 255, .5)";
+       // context.fillRect(5, 5, 125, 125);
+    
+    
+        $("#myCanvas").keypress(function() {
+            alert("Handler for .keypress() called.");
+          });
+        
+        
+        currentGame.start();
+        
+        setInterval(function(){processClientUpdate();},currentGame.timeInterval);
+        alert('moo');
+        
+    });
+        
+    function processClientUpdate()
+    {
+        
+        currentGame.update(0,upKey,downKey,leftKey,rightKey);
+        //currentGame.update(0,upKey,downKey,leftKey,rightKey);
+        
+        render();
+    }
+    
+    var lastRenderedFrame=0;
+    
+    function render()
+    {
+        
+        if(lastRenderedFrame==currentGame.frame)
+        {
+            alert('trip');
+        }
+        else{
+            context.clearRect ( 0 , 0 , 300 , 300 );
+            
+            for(i=0;i<currentGame.players.length;i++)
+            {
+                context.fillStyle = "rgba(0, 0, 255, .5)";
+                //alert(currentGame.players[i].x);
+            
+                context.fillRect(currentGame.players[i].x, currentGame.players[i].y, 125, 125);
+            }
+            lastRenderedFrame=currentGame.frame;
+        }
+    }
+    
+    function onKeyDown(evt) {
+        if (evt.keyCode == 39)
+        {
+            rightKey = true;
+        }
+        else if (evt.keyCode == 37)
+        {
+            leftKey = true;
+        }
+        if (evt.keyCode == 38)
+        {
+            upKey = true;
+        }
+        else if (evt.keyCode == 40) {
+            downKey = true;
+        }
+      }
+      
+    function onKeyUp(evt) {
+      if (evt.keyCode == 39) rightKey = false;
+      else if (evt.keyCode == 37) leftKey = false;
+      if (evt.keyCode == 38) upKey = false;
+      else if (evt.keyCode == 40) downKey = false;
+    }
+    
+    $(document).keydown(onKeyDown);
+    $(document).keyup(onKeyUp);
+    </script>
+    </head>
+    <body>
+        Cheese<br/>
+        <canvas id="myCanvas" width="300" height="300" style="background:#e9e9e9"></canvas>
+        
+    </body>
+    
+</html>

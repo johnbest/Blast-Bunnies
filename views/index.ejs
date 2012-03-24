@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+    
+    <!--
+    some code from
+    http://atomicrobotdesign.com/blog/htmlcss/move-objects-around-the-canvas-using-the-keyboard-and-jquery/
+    
+    -->
+    
+<html>
+    <head>
+    <!--  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>-->
+    <style>
+      body{
+        background:#FFCCCC;
+      }
+      
+    </style>
+    
+    <script src="jquery-1.4.4.js"></script>
+    
+    
+        <!--<script src='bm.js'></script>-->
+        <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+    //http://169.254.173.209/
+    var socket = io.connect();//'http://192.168.1.134');
+    //var socket = io.connect('http://localhost');
+    
+    
+  
+    
+    //HACK:what should this be?
+    var timeInterval=1000/40;
+    
+    var squareSize=30;
+    
+      
+    var rightKey = false;
+    var leftKey = false;
+    var upKey = false;
+    var downKey = false;
+    var dropBombKey = false;
+    
+    //this gets populated with a json blob when the game updates
+    var gameState=null;
+    
+    currentX=10; currentY=10;
+    
+    var context=null;
+    var canvas=null;
+
+    var playersListContext=null;
+    
+    //var currentGame=new bmGame(['john','bob']);
+    
+    
+    //var playerIndex=0;
+    var playerID=0;
+        
+        
+    $(document).ready(function() {
+    
+        $('#restart').click(function()
+        {
+          socket.emit('restart', '', function() {
+           alert('helo');//does nothing probably
+        });
+        });
+        
+        $('#updateName').click(function()
+        {
+          var channel = $('#channel').val();
+          
+          msg={
+            playerID:playerID,
+            newName: $('#name').val()
+          }
+          
+          
+          socket.emit('changeName', JSON.stringify(msg), function() {
+           alert('helo');
+        });
+        });
+        
+        $('#start').click(function()
+        {
+          //alert('click');
+          var channel = $('#channel').val();
+          socket.emit('start', '', function() {
+           alert('helo');
+        });
+        });
+        
+        //CHAT CODE
+        $('#join').click(function() {
+          var channel = $('#channel').val();
+          socket.emit('join', channel, function() {
+            
+          });
+        });
+        /*
+        $('#send').click(function() {
+          var msg = $('#message').val();
+          socket.emit('message', msg, function() {
+            addMessage(msg);
+          });
+        });
+        */
+        
+        socket.on('broadcast', function(msg) {
+          //addMessage(msg);
+        });
+        
+        
+        socket.on('setPlayerIndex',function(msg)
+        {
+          //$('#playerIndex').val(msg);
+          playerID=parseInt(msg);
+          $('#playerID').val(msg);
+          
+          //now we have an index, start updating.
+          setInterval(function(){processClientUpdate();},timeInterval);
+        });
+        
+        socket.on('state', function(msg) {
+          //addMessage(msg);
+          //alert('asdasd');
+          gameState=JSON.parse(msg);
+          //alert(gameState['map']);
+          
+          //render();
+        });
+        
+        socket.on('error', function(err) {
+          //addMessage('error: ' + err);
+        });
+        
+        $('#channel').val('game1');
+        $('#join').trigger('click');
+    
+        //$('#myCanvas').hide();
+        canvas = $('myCanvas');
+         context = $("#myCanvas")[0].getContext('2d');
+         
+        playersListContext=$("#playersCanvas")[0].getContext('2d');
+         
+        //context.fillStyle = "rgba(0, 0, 255, .5)";
+       // context.fillRect(5, 5, 125, 125);
+    
+    
+        $("#myCanvas").keypress(function() {
+            alert("Handler for .keypress() called.");
+          });
+        
+        
+        //call it once to get an id
+        processClientUpdate();
+        //ONLY WANt TO DO THIS ON GAME START!
+        //setInterval(function(){processClientUpdate();},timeInterval);
+        //alert('moo');
+        
+        
+    });
+        
+    function processClientUpdate()
+    {
+     
+     
+      
+      msg={
+        'playerID': playerID,
+        'upKey':upKey,
+        'downKey':downKey,
+        'leftKey':leftKey,
+        'rightKey':rightKey,
+        'dropBombKey':dropBombKey
+      };
+      //alert('about to send');
+      
+      socket.emit('message', JSON.stringify(msg), function() {});
+      
+      render();
+    }
+    
+    var lastRenderedFrame=0;
+    
+    function renderPlayers()
+    {
+      for(i=0;i<gameState["players"].length;i++)
+      {
+        if(gameState.players[i].alive)
+        {
+          if(gameState.players[i].id==playerID)
+          {
+            context.fillStyle = "rgba(0, 0, 125, .9)";
+          }
+          else{
+            context.fillStyle = "rgba(0, 0, 255, .9)";
+          }
+          
+          var playX=gameState.players[i].x;
+          var playY=gameState.players[i].y;
+      
+          context.fillRect(playX * squareSize, playY * squareSize, squareSize, squareSize);
+          
+          context.fillStyle = "rgba(255, 255, 255, .9)";
+          
+          context.fillText(gameState["players"][i].facing,(playX * squareSize) + 5, (playY * squareSize) + 12);
+        }
+          
+          
+      }
+
+    }
+    
+    function renderExplosions()
+    {
+      //context.fillStyle ="rgba(230,  10, 10, 0.49)"; 
+      
+      for(i=0;i<gameState.explosions.length;i++){
+         exp=gameState.explosions[i];
+         
+         //HACK:needs to know roughly how long explosions should be around
+         var proportion = ( exp.timeToLive/120);
+         
+         //.7 is max
+         var alpha = 0 +  (proportion * .3);
+         
+          context.fillStyle ="rgba(230,  10, 10, " + alpha + ")"; 
+        
+          context.fillRect(squareSize * exp.x, squareSize * exp.y,squareSize-1,squareSize-1 );
+        
+          //context.fillStyle = "rgba(255, 255, 255, .9)";
+          
+          //context.fillText(exp.timeToLive,exp.x * squareSize, (exp.y * squareSize) + 12);
+        
+          
+      }
+      
+    }
+    
+    function renderBomb()
+    {
+          
+      for(i=0;i<gameState.bombs.length;i++){
+         context.fillStyle ="rgba(10,  10, 10, 0.89)";
+          
+        bomb=gameState.bombs[i];
+        
+        context.fillRect(squareSize * bomb.x, squareSize * bomb.y,squareSize-1,squareSize-1 );
+        
+        context.fillStyle = "rgba(255, 255, 255, .9)";
+          
+        context.fillText(bomb.timeToLive,bomb.x * squareSize, (bomb.y * squareSize) + 12);
+        
+        //context.fillStyle = "rgba(10, 10, 10, .9)";
+          
+      }
+      
+    }
+    
+    function renderMap()
+    {
+      var map = gameState.map;
+      
+      //alert(map);
+    
+      for(y=0;y<map.length;y++)
+      {
+        for(x=0;x<map[y].length;x++)
+        {
+          square=map[y][x];
+          
+          color="rgba(120, 120, 255, .5)";
+          
+          switch(square)
+          {
+            case '*':
+              color="rgba(120, 120, 0, .8)";
+              break;
+            case ' ':
+            case 'a':
+              color="rgba(120, 50, 100, .7)";
+              break;
+            case 'o':
+              color="rgba(50,  120, 30, 1)";
+              break;
+            
+            case 'x':
+              //extra explosion
+              color="rgba(200,  170, 170, 1)";
+              break;
+            case 'b':
+              color="rgba(160,  250, 200, 1)";
+              break;
+          }
+          
+          context.fillStyle =color;
+                  //alert(currentGame.players[i].x);
+              
+          context.fillRect(squareSize * x, squareSize * y,squareSize-1,squareSize-1 );
+                  
+          
+        }
+      }
+    
+    }
+    
+    
+    //HACK:Show/hide every update - ugly!!!! - could store ref to the div, and check before showing/hiding
+    function renderLobby()
+    {
+      $('#lobby').show();
+      $('#game').hide();
+      $('#gameOver').hide();
+    }
+    
+    function renderGameOver()
+    {
+      $('#lobby').hide();
+      $('#game').hide();
+      $('#gameOver').show();
+      
+      $('#gameOverMessage').html(gameState.message);
+      
+    }
+    
+    function renderGame()
+    {
+      
+      $('#lobby').hide();
+      $('#game').show();
+      $('#gameOver').hide();
+      
+      renderMap();
+            
+      //alert('wooohoo');
+      renderPlayers();
+      renderBomb();
+      
+      renderExplosions();
+      
+      
+    }
+    function render()
+    {
+        //alert('render');
+        if(1==2)//if(lastRenderedFrame==currentGame.frame)
+        {
+            alert('trip');
+        }
+        else{
+            context.clearRect ( 0 , 0 , 300 , 300 );
+            
+            if(gameState!=null)
+            {
+              
+              if(gameState.state==0)
+              {
+                renderLobby();
+              }
+              else if (gameState.state==1)
+              {
+                renderGame();
+                
+              }
+              else if(gameState.state==2)
+              {
+                  renderGameOver();
+              }
+              
+              
+                            //lastRenderedFrame=currentGame.frame;
+            
+              renderPlayerList();
+            }
+            
+        }
+    }
+    
+    //inefficient to do this every update?
+    function renderPlayerList()
+    {
+      
+      //return;
+      playersListContext.clearRect ( 0 , 0 , 300 , 300 );
+            
+      //iterate through the players and render to canvas
+      
+      color="rgba(0,  0, 0, 1)";
+      playersListContext.fillStyle =color;
+
+      var currentY=10;
+      
+      for(playerIndex=0;playerIndex < gameState.players.length;playerIndex++)
+      {
+        player=gameState.players[playerIndex];
+        
+        playersListContext.fillText(player.id + ' ' + player.name + ' ' + player.lastFrame ,0, currentY);
+        
+        currentY+=10;
+      }
+    }
+    
+    function onKeyDown(evt) {
+        if (evt.keyCode == 39)
+        {
+            rightKey = true;
+        }
+        else if (evt.keyCode == 37)
+        {
+            leftKey = true;
+        }
+        if (evt.keyCode == 38)
+        {
+            upKey = true;
+        }
+        else if (evt.keyCode == 40) {
+            downKey = true;
+        }
+        
+        if(evt.keyCode==32)
+        {
+          dropBombKey=true;
+        }
+      }
+      
+    function onKeyUp(evt) {
+      if (evt.keyCode == 39) rightKey = false;
+      else if (evt.keyCode == 37) leftKey = false;
+      if (evt.keyCode == 38) upKey = false;
+      else if (evt.keyCode == 40) downKey = false;
+      
+      
+      if(evt.keyCode==32)
+      {
+        dropBombKey=false;
+      }
+    }
+    
+    $(document).keydown(onKeyDown);
+    $(document).keyup(onKeyUp);
+    </script>
+    </head>
+    <body>
+      <div style='display:none'>
+      <input id="channel" type="text"><button id="join">Join</button>
+  </div>
+      
+      <!--<input id="message" type="text" value="getState"><button id="send">Send</button>-->
+    <br/>
+      <h3>BombBunnies!</h3>
+      <!--readonly?!-->
+      playerID :<input id=playerID type="text" value="" readonly="readonly" width=30 />
+      name : <input id=name type="text" value="enterName"/>
+      <input type=button value='update' id='updateName'/>
+
+    <br/>&nbsp;
+      <div id="lobby" style='display:none'>
+        LOBBY
+        <input type=button value='start' id='start'/>
+                
+      </div>
+      <div id="players" style='float:left;background:green'>
+        Players list
+        <br/>
+        <canvas id='playersCanvas' width="100" height="100" style="background:#e9e9e9">
+          
+        </canvas>
+        
+      </div>
+      <div id="game" style='display:none;background:blue'>
+        <canvas id="myCanvas" width="600" height="600" style="background:#e9e9e9"></canvas>
+        
+      </div>
+      
+      
+      <div id="gameOver" style='display:none'>
+        
+        <div id=gameOverMessage>
+          game over message
+        </div>
+        <input type='button' id='restart' value='restart'>
+      </div>
+      
+      
+    
+    </body>
+    
+</html>
