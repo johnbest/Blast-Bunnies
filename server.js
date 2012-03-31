@@ -14,11 +14,6 @@ var fs = require('fs');
 
 var game = require('./bb.js');
 
-//HACK:remove these
-var test = require('./test');
-test.testFunc();
-
-
 var currentGame=new game.bbGame();//['john','bob','pete','mouse']);
  
 
