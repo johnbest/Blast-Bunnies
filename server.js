@@ -10,12 +10,17 @@ var fs = require('fs');
 
 //var game=require('bm');
 
-eval(fs.readFileSync('bm.js')+'');
+//eval(fs.readFileSync('bm.js')+'');
+
+var game = require('./bb.js');
+
+//HACK:remove these
+var test = require('./test');
+test.testFunc();
 
 
-var currentGame=new bmGame();//['john','bob','pete','mouse']);
-  
-
+var currentGame=new game.bbGame();//['john','bob','pete','mouse']);
+ 
 
 app.set('view options', {layout: false})
 

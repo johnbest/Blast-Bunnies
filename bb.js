@@ -90,7 +90,7 @@ function createMap()
 
 
 //list of strings
-function bmGame()
+exports.bbGame = function ()
 {
     
     this.updateMap = function(x,y,newChar){
