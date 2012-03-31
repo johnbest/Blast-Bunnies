@@ -12,6 +12,9 @@ x = bonus explosion distance
 b = bonus bomb
  */
 
+movePerUpdate = 0.1;
+
+threshold=0.05;
 
 //defaultcreatfunction 
 function createMap()
@@ -323,15 +326,27 @@ function bmGame()
     
     this.updatePlayerInput=function (id,upKey,downKey,leftKey,rightKey,dropBombKey)
     {
+        //console.log('hello');
         var player=this.getPlayerByID(id);
         
-        player.upKey=upKey;
-        player.downKey=downKey;
-        player.leftKey=leftKey;
-        player.rightKey=rightKey;
-        player.dropBombKey=dropBombKey;
+        //console.log(player);
         
-        player.lastFrame=this.frame;
+        if(player!=null)
+        {
+            player.upKey=upKey;
+            player.downKey=downKey;
+            player.leftKey=leftKey;
+            player.rightKey=rightKey;
+            player.dropBombKey=dropBombKey;
+            //console.log('after');
+            
+            
+            player.lastFrame=this.frame;
+            
+            
+            player.lastUpdate = new Date().getTime();
+        }
+        
     };
     
     this.getPlayerBombs=function(index)
@@ -341,16 +356,11 @@ function bmGame()
         
         for(i=0;i< this.bombs.length;i++)
         {
-            //console.log(' checking index ' + this.bombs[i].playerIndex + ' ' + index);
-            
             if(this.bombs[i].playerIndex==index){
-              //  console.log('found');
                 playerBombs.push(this.bombs[i]);
-               // console.log('added');
             }
             
         }
-        //console.log('player bombs ' + playerBombs.length);
         
         return playerBombs;
         
@@ -359,7 +369,6 @@ function bmGame()
     this.cheskSquareIsFree = function(x,y)
     {
         siteContent = this.map[y][x];
-        //console.log(siteContent);
         
         if(siteContent=='*'|| siteContent=='o')
         {
@@ -385,6 +394,35 @@ function bmGame()
     
     this.processUpdate=function()
     {
+        var currentTime = new Date().getTime();
+        //See if the player has left
+        for(playerIndex=this.players.length-1;playerIndex>=0;playerIndex--)
+        {
+            
+            p = this.players[playerIndex];
+            
+            diff = currentTime - p.lastUpdate;
+            
+            //HACK:magic number
+            if(diff > 3000)
+            {
+                //over 3000 ms... kill the player.
+                
+                if(this.state== this.stateEnum.game)
+                {
+                        p.alive=false;
+                }
+                else{
+                    
+                    this.players.splice(playerIndex,1);
+                    
+                    
+                }
+                
+            }
+            
+        }
+        
         if(this.state== this.stateEnum.game)
         {
             //UPDATE BOMBS
@@ -421,12 +459,12 @@ function bmGame()
                 
                 if(p.alive)
                 {
-                    increment=0.1;
+                    increment=movePerUpdate;
                     
                     posX = p.x % 1;
                     posY = p.y % 1;
                     
-                    minThreshold=0.05;
+                    minThreshold=threshold;
                     maxThreshold = 1-minThreshold;
                     
                     var moving=false;
@@ -711,6 +749,7 @@ function player(name)
     this.explosionSize=3;
     this.alive=false;
     this.lastFrame=0;
+    this.lastUpdate = new Date().getTime();
     
     
     console.log("creating player");
